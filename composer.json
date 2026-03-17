@@ -1,0 +1,35 @@
+{
+    "name": "wortfreunde/wortfreunde-connector",
+    "type": "typo3-cms-extension",
+    "description": "TYPO3 extension to receive Markdown blog posts from wortfreunde.ch via webhooks and convert them to tt_content elements.",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "dkd Internet Service GmbH",
+            "email": "opensource@dkd.de",
+            "homepage": "https://www.dkd.de",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "typo3/cms-core": "^12.4 || ^13.4",
+        "typo3/cms-backend": "^12.4 || ^13.4",
+        "league/commonmark": "^2.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Wortfreunde\\WortfreundeConnector\\": "Classes/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Wortfreunde\\WortfreundeConnector\\Tests\\": "Tests/"
+        }
+    },
+    "extra": {
+        "typo3/cms": {
+            "extension-key": "wortfreunde_connector"
+        }
+    }
+}

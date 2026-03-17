@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+    <file source-language="en" datatype="plaintext" original="messages" date="2025-03-08T00:00:00Z" product-name="wortfreunde_connector">
+        <header/>
+        <body>
+            <trans-unit id="tx_wortfreundeconnector_webhook_log" resname="tx_wortfreundeconnector_webhook_log">
+                <source>Webhook Log</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>

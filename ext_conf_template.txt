@@ -1,0 +1,17 @@
+# cat=webhook/enable; type=string; label=Webhook Secret: Shared secret for HMAC-SHA256 signature verification of incoming webhooks
+webhook.secret =
+
+# cat=webhook/enable; type=int+; label=Default Page UID: Page where new tt_content elements will be stored
+webhook.defaultPageUid = 0
+
+# cat=webhook/enable; type=int+; label=Default Language UID: sys_language_uid for created content
+webhook.defaultLanguageUid = 0
+
+# cat=webhook/enable; type=int+; label=Default ColPos: Column position for created tt_content
+webhook.defaultColPos = 0
+
+# cat=webhook/enable; type=options[text,textmedia]; label=Content Type: CType for created tt_content elements
+webhook.defaultContentType = text
+
+# cat=webhook/enable; type=boolean; label=Enable Logging: Log all incoming webhook requests
+webhook.enableLogging = 1
