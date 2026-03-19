@@ -1,0 +1,83 @@
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+      xmlns:be="http://typo3.org/ns/TYPO3/CMS/Backend/ViewHelpers"
+      data-namespace-typo3-fluid="true">
+
+<f:section name="Content">
+    <h1>Wortfreunde Settings</h1>
+
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <be:moduleLink route="wortfreunde" class="nav-link">Webhook Log</be:moduleLink>
+        </li>
+        <li class="nav-item">
+            <be:moduleLink route="wortfreunde.settings" class="nav-link active">Settings</be:moduleLink>
+        </li>
+    </ul>
+
+    <f:if condition="{saved}">
+        <div class="alert alert-success">Settings saved successfully.</div>
+    </f:if>
+
+    <f:be.uri route="wortfreunde.saveSettings" additionalParams="{}" />
+    <f:variable name="saveUri"><f:be.uri route="wortfreunde.saveSettings" /></f:variable>
+    <form method="post" action="{saveUri}">
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title">Webhook Security</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="secret" class="form-label">Webhook Secret (HMAC-SHA256)</label>
+                    <input type="text" class="form-control" id="secret" name="settings[secret]" value="{settings.secret}" placeholder="Leave empty to disable signature verification" />
+                    <div class="form-text">Shared secret for verifying incoming webhook signatures from wortfreunde.ch</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title">Content Defaults</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="defaultPageUid" class="form-label">Default Page UID</label>
+                    <input type="number" class="form-control" id="defaultPageUid" name="settings[defaultPageUid]" value="{settings.defaultPageUid}" min="0" />
+                    <div class="form-text">Page where new tt_content elements will be created</div>
+                </div>
+                <div class="mb-3">
+                    <label for="defaultLanguageUid" class="form-label">Default Language UID</label>
+                    <input type="number" class="form-control" id="defaultLanguageUid" name="settings[defaultLanguageUid]" value="{settings.defaultLanguageUid}" min="0" />
+                </div>
+                <div class="mb-3">
+                    <label for="defaultColPos" class="form-label">Default ColPos</label>
+                    <input type="number" class="form-control" id="defaultColPos" name="settings[defaultColPos]" value="{settings.defaultColPos}" min="0" />
+                </div>
+                <div class="mb-3">
+                    <label for="defaultContentType" class="form-label">Content Type</label>
+                    <select class="form-select" id="defaultContentType" name="settings[defaultContentType]">
+                        <option value="text" f:if="{f:if(condition: '{settings.defaultContentType} == \'text\'', then: 'selected')}">text</option>
+                        <option value="textmedia" f:if="{f:if(condition: '{settings.defaultContentType} == \'textmedia\'', then: 'selected')}">textmedia</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title">Logging</h3>
+            </div>
+            <div class="card-body">
+                <div class="form-check">
+                    <input type="hidden" name="settings[enableLogging]" value="0" />
+                    <input type="checkbox" class="form-check-input" id="enableLogging" name="settings[enableLogging]" value="1" {f:if(condition: settings.enableLogging, then: 'checked')} />
+                    <label class="form-check-label" for="enableLogging">Enable webhook request logging</label>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </form>
+</f:section>
+
+</html>

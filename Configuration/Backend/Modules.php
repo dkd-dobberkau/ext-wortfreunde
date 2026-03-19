@@ -13,6 +13,13 @@ return [
             '_default' => [
                 'target' => \Wortfreunde\WortfreundeConnector\Controller\WebhookLogController::class . '::listAction',
             ],
+            'settings' => [
+                'target' => \Wortfreunde\WortfreundeConnector\Controller\WebhookLogController::class . '::settingsAction',
+            ],
+            'saveSettings' => [
+                'target' => \Wortfreunde\WortfreundeConnector\Controller\WebhookLogController::class . '::saveSettingsAction',
+                'methods' => ['POST'],
+            ],
         ],
     ],
 ];
