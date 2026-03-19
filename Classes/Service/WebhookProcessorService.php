@@ -178,18 +178,16 @@ class WebhookProcessorService implements LoggerAwareInterface
             $existing = $this->findContentByWebhookId($postId);
             if ($existing) {
                 $result = $this->updateContent($existing, $post, $config, $webhookId);
-                // Keep hidden until published
-                $connection = $this->connectionPool->getConnectionForTable('tt_content');
-                $connection->update('tt_content', ['hidden' => 1], ['uid' => $existing['uid']]);
+                // Hide page until published
+                $this->setPageHidden($existing['pid'], true);
                 $result['action'] = 'updated_pending';
                 return $result;
             }
         }
 
         $result = $this->createContent($post, $config, $webhookId);
-        // Set hidden until published
-        $connection = $this->connectionPool->getConnectionForTable('tt_content');
-        $connection->update('tt_content', ['hidden' => 1], ['uid' => $result['tt_content_uid']]);
+        // Hide page until published
+        $this->setPageHidden($result['page_uid'], true);
         $result['action'] = 'created_pending';
         return $result;
     }
@@ -204,8 +202,8 @@ class WebhookProcessorService implements LoggerAwareInterface
         if (!empty($postId)) {
             $existing = $this->findContentByWebhookId($postId);
             if ($existing) {
-                $connection = $this->connectionPool->getConnectionForTable('tt_content');
-                $connection->update('tt_content', ['hidden' => 1, 'tstamp' => time()], ['uid' => $existing['uid']]);
+                // Hide the page
+                $this->setPageHidden($existing['pid'], true);
 
                 return [
                     'action' => 'unpublished',
@@ -231,15 +229,21 @@ class WebhookProcessorService implements LoggerAwareInterface
 
     private function createContent(array $post, array $config, string $webhookId): array
     {
-        $contentData = $this->buildContentData($post, $config);
-        $pageUid = $contentData['pid'];
+        $parentPageUid = (int)($config['defaultPageUid'] ?? 0);
 
-        if ($pageUid <= 0) {
+        if ($parentPageUid <= 0) {
             throw new \InvalidArgumentException(
-                'No target page configured. Configure "webhook.defaultPageUid" in extension settings.'
+                'No target page configured. Configure "Default Page UID" in extension settings.'
             );
         }
 
+        $contentData = $this->buildContentData($post, $config);
+
+        // Create a new page under the parent blog page
+        $pageUid = $this->createPage($post, $parentPageUid, $config);
+
+        // Place content on the new page
+        $contentData['pid'] = $pageUid;
         $contentData['tstamp'] = time();
         $contentData['crdate'] = time();
 
@@ -265,11 +269,14 @@ class WebhookProcessorService implements LoggerAwareInterface
     private function updateContent(array $existing, array $post, array $config, string $webhookId): array
     {
         $contentData = $this->buildContentData($post, $config);
-        unset($contentData['pid']); // Don't move existing record
         $contentData['tstamp'] = time();
 
+        // Update tt_content
         $connection = $this->connectionPool->getConnectionForTable('tt_content');
         $connection->update('tt_content', $contentData, ['uid' => $existing['uid']]);
+
+        // Update the page title and slug
+        $this->updatePage($existing['pid'], $post);
 
         return [
             'action' => 'updated',
@@ -278,6 +285,96 @@ class WebhookProcessorService implements LoggerAwareInterface
             'post_id' => $post['id'] ?? null,
             'webhook_id' => $webhookId,
         ];
+    }
+
+    /**
+     * Create a new page under the blog parent page.
+     */
+    private function createPage(array $post, int $parentPageUid, array $config): int
+    {
+        $title = $post['title'] ?? 'Wortfreunde Post';
+        $slug = $this->buildSlug($post, $title);
+
+        $pageData = [
+            'pid' => $parentPageUid,
+            'doktype' => 1, // Standard page
+            'title' => $title,
+            'slug' => $slug,
+            'sys_language_uid' => (int)($config['defaultLanguageUid'] ?? 0),
+            'tstamp' => time(),
+            'crdate' => time(),
+        ];
+
+        // SEO fields
+        if (!empty($post['meta_title'])) {
+            $pageData['seo_title'] = $post['meta_title'];
+        }
+        if (!empty($post['meta_description'])) {
+            $pageData['description'] = $post['meta_description'];
+        }
+        if (!empty($post['teaser'])) {
+            $pageData['abstract'] = $post['teaser'];
+        }
+
+        $connection = $this->connectionPool->getConnectionForTable('pages');
+        $connection->insert('pages', $pageData);
+        $pageUid = (int)$connection->lastInsertId();
+
+        if ($pageUid <= 0) {
+            throw new \RuntimeException('Failed to create page for post.');
+        }
+
+        return $pageUid;
+    }
+
+    /**
+     * Update an existing page's title and slug.
+     */
+    private function updatePage(int $pageUid, array $post): void
+    {
+        $title = $post['title'] ?? '';
+        if (empty($title)) {
+            return;
+        }
+
+        $updateData = [
+            'title' => $title,
+            'slug' => $this->buildSlug($post, $title),
+            'tstamp' => time(),
+        ];
+
+        if (!empty($post['meta_title'])) {
+            $updateData['seo_title'] = $post['meta_title'];
+        }
+        if (!empty($post['meta_description'])) {
+            $updateData['description'] = $post['meta_description'];
+        }
+        if (!empty($post['teaser'])) {
+            $updateData['abstract'] = $post['teaser'];
+        }
+
+        $connection = $this->connectionPool->getConnectionForTable('pages');
+        $connection->update('pages', $updateData, ['uid' => $pageUid]);
+    }
+
+    /**
+     * Build URL slug from post data.
+     */
+    private function buildSlug(array $post, string $title): string
+    {
+        // Use slug from Wortfreunde if available
+        $slug = $post['slug'] ?? '';
+        if (empty($slug)) {
+            $slug = mb_strtolower($title);
+            $slug = preg_replace('/[^a-z0-9\-äöüß]+/u', '-', $slug);
+            $slug = preg_replace('/-+/', '-', $slug);
+            $slug = trim($slug, '-');
+        }
+        // Ensure leading slash
+        if (!str_starts_with($slug, '/')) {
+            $slug = '/' . $slug;
+        }
+        return $slug;
     }
 
     /**
@@ -308,10 +405,7 @@ class WebhookProcessorService implements LoggerAwareInterface
 
         $htmlContent = $this->markdownConverter->convert($markdownBody);
 
-        $pageUid = (int)($config['defaultPageUid'] ?? 0);
-
         $data = [
-            'pid' => $pageUid,
             'CType' => $config['defaultContentType'] ?? 'text',
             'colPos' => (int)($config['defaultColPos'] ?? 0),
             'sys_language_uid' => (int)($config['defaultLanguageUid'] ?? 0),
@@ -380,6 +474,15 @@ class WebhookProcessorService implements LoggerAwareInterface
             )
             ->executeQuery()
             ->fetchAssociative() ?: null;
+    }
+
+    /**
+     * Show or hide a page.
+     */
+    private function setPageHidden(int $pageUid, bool $hidden): void
+    {
+        $connection = $this->connectionPool->getConnectionForTable('pages');
+        $connection->update('pages', ['hidden' => $hidden ? 1 : 0, 'tstamp' => time()], ['uid' => $pageUid]);
     }
 
     private function storeWebhookReference(int $ttContentUid, string $webhookId): void
