@@ -68,6 +68,14 @@ class WebhookProcessorService implements LoggerAwareInterface
             throw new \InvalidArgumentException('Missing event type. Provide X-Wortfreunde-Event header or "event" field.');
         }
 
+        // Respond to ping events without processing
+        if ($event === 'ping') {
+            return [
+                'action' => 'pong',
+                'message' => 'Webhook connection verified.',
+            ];
+        }
+
         $post = $payload['data']['post'] ?? null;
         if ($post === null) {
             throw new \InvalidArgumentException('Missing "data.post" in webhook payload.');
