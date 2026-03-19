@@ -4,8 +4,8 @@ TYPO3 extension that receives blog posts from [wortfreunde.ch](https://wortfreun
 
 ## Requirements
 
-- TYPO3 v12.4 LTS or v13.4 LTS
-- PHP 8.1+
+- TYPO3 v13.4 LTS
+- PHP 8.3+
 - Composer
 
 ## Installation
@@ -14,20 +14,21 @@ TYPO3 extension that receives blog posts from [wortfreunde.ch](https://wortfreun
 composer require wortfreunde/wortfreunde-connector
 ```
 
-Then activate the extension via TYPO3 Admin Tools → Extensions, and run **Analyze Database Structure** to create the webhook log table.
+Then run **Analyze Database Structure** to create the webhook log table.
 
 ## Configuration
 
-In **Admin Tools → Settings → Extension Configuration → wortfreunde_connector**:
+Settings are managed in the TYPO3 backend under **System → Wortfreunde → Settings**. They are stored in the database (`sys_registry`), so they work on read-only filesystems (Docker).
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `webhook.secret` | Shared HMAC-SHA256 secret for signature verification | *(empty = no verification)* |
-| `webhook.defaultPageUid` | Target page UID for new `tt_content` elements | `0` |
-| `webhook.defaultLanguageUid` | `sys_language_uid` for created content | `0` |
-| `webhook.defaultColPos` | Column position (`colPos`) | `0` |
-| `webhook.defaultContentType` | CType: `text` or `textmedia` | `text` |
-| `webhook.enableLogging` | Log all incoming webhook requests | `true` |
+| Webhook Secret | Shared HMAC-SHA256 secret for signature verification | *(empty = no verification)* |
+| Allowed Channel IDs | Comma-separated channel IDs to process (empty = all) | *(empty)* |
+| Default Page UID | Target page UID for new `tt_content` elements | `0` |
+| Default Language UID | `sys_language_uid` for created content | `0` |
+| Default ColPos | Column position (`colPos`) | `0` |
+| Content Type | CType: `text` or `textmedia` | `text` |
+| Enable Logging | Log all incoming webhook requests | `true` |
 
 ## Webhook Endpoint
 
@@ -37,43 +38,28 @@ After installation, the webhook is available at:
 POST https://your-typo3-site.example/wortfreunde/webhook
 ```
 
-### Payload Format
+Configure this URL in **Wortfreunde Studio → Settings → Webhooks**.
 
-The extension expects the webhook payload format as documented at [wortfreunde.ch/docs/api-reference/webhooks](https://wortfreunde.ch/docs/api-reference/webhooks):
+## How It Works
 
-```json
-{
-  "event": "post.published",
-  "timestamp": "2026-03-09T10:00:00Z",
-  "account": {
-    "id": 42,
-    "name": "Team Name"
-  },
-  "data": {
-    "post": {
-      "id": 214,
-      "title": "My Blog Post Title",
-      "body": "# Heading\n\nMarkdown content with **bold** text.",
-      "teaser": "Short summary of the post",
-      "slug": "my-blog-post-title",
-      "publication_status": "published",
-      "published_at": "2026-03-09T10:00:00Z",
-      "tags": [{"id": 1, "name": "tech"}],
-      "media": [],
-      "channel": {"id": 161, "title": "Blog", "platform": "git"}
-    }
-  }
-}
-```
+1. You create or edit a post in Wortfreunde Studio
+2. Wortfreunde sends a signed HTTP request to your TYPO3 webhook endpoint
+3. The extension verifies the signature, checks the channel filter, and processes the event
+4. A `tt_content` element is created or updated on the configured target page
 
-### Events
+Webhooks are global per Wortfreunde account — all channels send to the same endpoint. Use **Allowed Channel IDs** to filter which channels are processed.
+
+## Events
 
 | Event | Behavior |
 |-------|----------|
 | `post.published` | Creates new `tt_content` element, or updates if post ID already exists |
 | `post.updated` | Updates existing content matched by post ID, falls back to create |
+| `post.publishing_pending` | Creates/updates content as **hidden** (awaiting publish confirmation) |
+| `post.unpublished` | Hides existing content element |
+| `ping` | Returns pong response (connection test) |
 
-### Field Mapping
+## Field Mapping
 
 | Wortfreunde Field | TYPO3 tt_content Field |
 |-------------------|------------------------|
@@ -83,44 +69,25 @@ The extension expects the webhook payload format as documented at [wortfreunde.c
 | `data.post.published_at` | `date` |
 | `data.post.id` | Used for deduplication via webhook log |
 
-### Webhook Headers
+## Webhook Headers
 
 Wortfreunde sends these headers with each delivery:
 
 | Header | Description |
 |--------|-------------|
-| `X-Wortfreunde-Signature` | HMAC-SHA256 signature for verification |
+| `X-Wortfreunde-Signature` | HMAC-SHA256 signature (with `sha256=` prefix) |
 | `X-Wortfreunde-Timestamp` | Unix timestamp of signature creation |
-| `X-Wortfreunde-Event` | Event type (`post.published`, `post.updated`) |
+| `X-Wortfreunde-Event` | Event type |
 | `X-Wortfreunde-Delivery` | Unique delivery identifier |
 
-### Signature Verification
+## Signature Verification
 
-If `webhook.secret` is configured, the extension verifies the `X-Wortfreunde-Signature` header. The signature is computed as HMAC-SHA256 over `{timestamp}.{body}`, where timestamp comes from the `X-Wortfreunde-Timestamp` header.
+If a webhook secret is configured, the extension verifies the `X-Wortfreunde-Signature` header:
 
-### Response Examples
-
-**Success (201):**
-```json
-{
-  "success": true,
-  "message": "Webhook processed successfully.",
-  "data": {
-    "action": "created",
-    "tt_content_uid": 123,
-    "page_uid": 42,
-    "post_id": 214,
-    "webhook_id": "214"
-  }
-}
-```
-
-**Validation Error (422):**
-```json
-{
-  "error": "Missing \"data.post\" in webhook payload."
-}
-```
+1. Strip `sha256=` prefix from signature
+2. Concatenate `{timestamp}.{body}` using the `X-Wortfreunde-Timestamp` header
+3. Compute HMAC-SHA256 with the shared secret
+4. Compare using timing-safe comparison
 
 ## Markdown Support
 
@@ -139,10 +106,10 @@ Unsafe HTML input (`<script>`, etc.) is automatically stripped.
 
 ## Backend Module
 
-A **Wortfreunde** module appears under *Web* in the TYPO3 backend, showing:
+A **Wortfreunde** module appears under **System** in the TYPO3 backend with two tabs:
 
-- Webhook log with event type, status, timestamps, and linked `tt_content` UIDs
-- Statistics overview (total / processed / pending / error)
+- **Webhook Log** — Event history with status, timestamps, and linked `tt_content` UIDs. Statistics overview (total / processed / pending / error).
+- **Settings** — Configure webhook secret, channel filter, content defaults, and logging.
 
 ## Architecture
 
@@ -150,7 +117,7 @@ A **Wortfreunde** module appears under *Web* in the TYPO3 backend, showing:
 wortfreunde_connector/
 ├── Classes/
 │   ├── Controller/
-│   │   └── WebhookLogController.php    # Backend module
+│   │   └── WebhookLogController.php    # Backend module (log + settings)
 │   ├── Middleware/
 │   │   └── WebhookMiddleware.php       # PSR-15 webhook endpoint
 │   └── Service/
