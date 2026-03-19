@@ -2,8 +2,8 @@
 
 return [
     'wortfreunde' => [
-        'parent' => 'web',
-        'position' => ['after' => 'web_info'],
+        'parent' => 'system',
+        'position' => ['after' => 'system_config'],
         'access' => 'admin',
         'workspaces' => 'live',
         'path' => '/module/web/wortfreunde',
