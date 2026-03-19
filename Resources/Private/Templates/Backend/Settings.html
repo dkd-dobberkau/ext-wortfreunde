@@ -54,9 +54,16 @@
                 </div>
                 <div class="mb-3">
                     <label for="defaultContentType" class="form-label">Content Type</label>
-                    <f:form.select name="settings[defaultContentType]" id="defaultContentType" class="form-select"
-                        options="{text: 'text', textmedia: 'textmedia'}"
-                        value="{settings.defaultContentType}" />
+                    <select class="form-select" id="defaultContentType" name="settings[defaultContentType]">
+                        <f:if condition="{settings.defaultContentType} == 'text'">
+                            <f:then><option value="text" selected="selected">text</option></f:then>
+                            <f:else><option value="text">text</option></f:else>
+                        </f:if>
+                        <f:if condition="{settings.defaultContentType} == 'textmedia'">
+                            <f:then><option value="textmedia" selected="selected">textmedia</option></f:then>
+                            <f:else><option value="textmedia">textmedia</option></f:else>
+                        </f:if>
+                    </select>
                 </div>
             </div>
         </div>
