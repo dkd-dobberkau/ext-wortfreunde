@@ -8,6 +8,7 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Registry;
 
 /**
  * Processes incoming webhook payloads from the Wortfreunde API.
@@ -47,6 +48,7 @@ class WebhookProcessorService implements LoggerAwareInterface
         private readonly MarkdownConverterService $markdownConverter,
         private readonly ConnectionPool $connectionPool,
         private readonly ExtensionConfiguration $extensionConfiguration,
+        private readonly Registry $registry,
     ) {}
 
     /**
@@ -68,8 +70,11 @@ class WebhookProcessorService implements LoggerAwareInterface
             throw new \InvalidArgumentException('Missing event type. Provide X-Wortfreunde-Event header or "event" field.');
         }
 
-        // Respond to ping events without processing
+        // Respond to ping events
         if ($event === 'ping') {
+            if ((bool)($config['enableLogging'] ?? true)) {
+                $this->logWebhook($deliveryId ?: uniqid('ping_', true), $payload, 'processed', $event, $deliveryId);
+            }
             return [
                 'action' => 'pong',
                 'message' => 'Webhook connection verified.',
@@ -352,6 +357,12 @@ class WebhookProcessorService implements LoggerAwareInterface
 
     private function getConfiguration(): array
     {
+        // Read from Registry (DB) first, fall back to ExtensionConfiguration
+        $stored = $this->registry->get('wortfreunde_connector', 'settings', []);
+        if (!empty($stored)) {
+            return $stored;
+        }
+
         try {
             $config = $this->extensionConfiguration->get('wortfreunde_connector');
             return $config['webhook'] ?? $config['webhook.'] ?? $config;
