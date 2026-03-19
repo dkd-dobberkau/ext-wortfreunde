@@ -6,7 +6,7 @@ return [
         'position' => ['after' => 'system_config'],
         'access' => 'admin',
         'workspaces' => 'live',
-        'path' => '/module/web/wortfreunde',
+        'path' => '/module/system/wortfreunde',
         'iconIdentifier' => 'wortfreunde-module',
         'labels' => 'LLL:EXT:wortfreunde_connector/Resources/Private/Language/locallang_mod.xlf',
         'routes' => [
