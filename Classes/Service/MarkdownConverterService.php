@@ -49,7 +49,17 @@ class MarkdownConverterService
             return '';
         }
 
-        return (string)$this->converter->convert($markdown);
+        $html = (string)$this->converter->convert($markdown);
+
+        // Replace <input> checkboxes with Unicode symbols for TYPO3 compatibility
+        // TYPO3's htmlSanitizer strips <input> tags from bodytext
+        $html = str_replace(
+            ['<input checked="" disabled="" type="checkbox">', '<input disabled="" type="checkbox">'],
+            ['&#9745; ', '&#9744; '],
+            $html,
+        );
+
+        return $html;
     }
 
     /**
