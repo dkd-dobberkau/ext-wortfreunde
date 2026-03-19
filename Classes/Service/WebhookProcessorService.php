@@ -398,10 +398,10 @@ class WebhookProcessorService implements LoggerAwareInterface
         // If no title in post, try extracting from H1
         if (empty($title)) {
             $title = $this->markdownConverter->extractTitle($markdownBody);
-            if ($title !== null) {
-                $markdownBody = $this->markdownConverter->removeTitle($markdownBody);
-            }
         }
+
+        // Always remove H1 from body — it's used as page title / header
+        $markdownBody = $this->markdownConverter->removeTitle($markdownBody);
 
         $htmlContent = $this->markdownConverter->convert($markdownBody);
 
