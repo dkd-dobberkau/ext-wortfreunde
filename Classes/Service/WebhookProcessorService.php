@@ -97,7 +97,9 @@ class WebhookProcessorService implements LoggerAwareInterface
             $result = match ($event) {
                 'post.published' => $this->handlePublished($post, $config, $webhookId),
                 'post.updated' => $this->handleUpdated($post, $config, $webhookId),
-                default => throw new \InvalidArgumentException("Unsupported event: \"{$event}\". Supported: post.published, post.updated."),
+                'post.publishing_pending' => $this->handlePublishingPending($post, $config, $webhookId),
+                'post.unpublished' => $this->handleUnpublished($post, $webhookId),
+                default => throw new \InvalidArgumentException("Unsupported event: \"{$event}\"."),
             };
 
             if ((bool)($config['enableLogging'] ?? true)) {
@@ -149,6 +151,68 @@ class WebhookProcessorService implements LoggerAwareInterface
             'post_id' => $postId,
         ]);
         return $this->createContent($post, $config, $webhookId);
+    }
+
+    /**
+     * Handle post.publishing_pending: create or update content as hidden (awaiting confirmation).
+     */
+    private function handlePublishingPending(array $post, array $config, string $webhookId): array
+    {
+        $postId = (string)($post['id'] ?? '');
+
+        if (!empty($postId)) {
+            $existing = $this->findContentByWebhookId($postId);
+            if ($existing) {
+                $result = $this->updateContent($existing, $post, $config, $webhookId);
+                // Keep hidden until published
+                $connection = $this->connectionPool->getConnectionForTable('tt_content');
+                $connection->update('tt_content', ['hidden' => 1], ['uid' => $existing['uid']]);
+                $result['action'] = 'updated_pending';
+                return $result;
+            }
+        }
+
+        $result = $this->createContent($post, $config, $webhookId);
+        // Set hidden until published
+        $connection = $this->connectionPool->getConnectionForTable('tt_content');
+        $connection->update('tt_content', ['hidden' => 1], ['uid' => $result['tt_content_uid']]);
+        $result['action'] = 'created_pending';
+        return $result;
+    }
+
+    /**
+     * Handle post.unpublished: hide existing content element.
+     */
+    private function handleUnpublished(array $post, string $webhookId): array
+    {
+        $postId = (string)($post['id'] ?? '');
+
+        if (!empty($postId)) {
+            $existing = $this->findContentByWebhookId($postId);
+            if ($existing) {
+                $connection = $this->connectionPool->getConnectionForTable('tt_content');
+                $connection->update('tt_content', ['hidden' => 1, 'tstamp' => time()], ['uid' => $existing['uid']]);
+
+                return [
+                    'action' => 'unpublished',
+                    'tt_content_uid' => $existing['uid'],
+                    'page_uid' => $existing['pid'],
+                    'post_id' => $post['id'] ?? null,
+                    'webhook_id' => $webhookId,
+                ];
+            }
+        }
+
+        $this->logger?->notice('Wortfreunde: post.unpublished but no existing record found.', [
+            'post_id' => $postId,
+        ]);
+
+        return [
+            'action' => 'unpublished_noop',
+            'message' => 'No existing content found to unpublish.',
+            'post_id' => $post['id'] ?? null,
+            'webhook_id' => $webhookId,
+        ];
     }
 
     private function createContent(array $post, array $config, string $webhookId): array
