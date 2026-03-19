@@ -7,10 +7,10 @@
 
     <ul class="nav nav-tabs mb-4">
         <li class="nav-item">
-            <be:moduleLink route="wortfreunde" class="nav-link">Webhook Log</be:moduleLink>
+            <a href="{be:moduleLink(route: 'wortfreunde')}" class="nav-link">Webhook Log</a>
         </li>
         <li class="nav-item">
-            <be:moduleLink route="wortfreunde.settings" class="nav-link active">Settings</be:moduleLink>
+            <a href="{be:moduleLink(route: 'wortfreunde.settings')}" class="nav-link active">Settings</a>
         </li>
     </ul>
 
@@ -18,9 +18,7 @@
         <div class="alert alert-success">Settings saved successfully.</div>
     </f:if>
 
-    <f:be.uri route="wortfreunde.saveSettings" additionalParams="{}" />
-    <f:variable name="saveUri"><f:be.uri route="wortfreunde.saveSettings" /></f:variable>
-    <form method="post" action="{saveUri}">
+    <form method="post" action="{be:moduleLink(route: 'wortfreunde.saveSettings')}">
 
         <div class="card mb-4">
             <div class="card-header">
@@ -55,10 +53,9 @@
                 </div>
                 <div class="mb-3">
                     <label for="defaultContentType" class="form-label">Content Type</label>
-                    <select class="form-select" id="defaultContentType" name="settings[defaultContentType]">
-                        <option value="text" f:if="{f:if(condition: '{settings.defaultContentType} == \'text\'', then: 'selected')}">text</option>
-                        <option value="textmedia" f:if="{f:if(condition: '{settings.defaultContentType} == \'textmedia\'', then: 'selected')}">textmedia</option>
-                    </select>
+                    <f:form.select name="settings[defaultContentType]" id="defaultContentType" class="form-select"
+                        options="{text: 'text', textmedia: 'textmedia'}"
+                        value="{settings.defaultContentType}" />
                 </div>
             </div>
         </div>
@@ -70,7 +67,14 @@
             <div class="card-body">
                 <div class="form-check">
                     <input type="hidden" name="settings[enableLogging]" value="0" />
-                    <input type="checkbox" class="form-check-input" id="enableLogging" name="settings[enableLogging]" value="1" {f:if(condition: settings.enableLogging, then: 'checked')} />
+                    <f:if condition="{settings.enableLogging}">
+                        <f:then>
+                            <input type="checkbox" class="form-check-input" id="enableLogging" name="settings[enableLogging]" value="1" checked="checked" />
+                        </f:then>
+                        <f:else>
+                            <input type="checkbox" class="form-check-input" id="enableLogging" name="settings[enableLogging]" value="1" />
+                        </f:else>
+                    </f:if>
                     <label class="form-check-label" for="enableLogging">Enable webhook request logging</label>
                 </div>
             </div>
