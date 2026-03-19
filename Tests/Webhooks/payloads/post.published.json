@@ -1,0 +1,33 @@
+{
+  "event": "post.published",
+  "timestamp": "2026-03-19T18:00:00Z",
+  "account": {
+    "id": 89,
+    "name": "dkd_de"
+  },
+  "data": {
+    "post": {
+      "id": 1001,
+      "title": "Warum Content-Strategie kein Luxus ist",
+      "body": "# Warum Content-Strategie kein Luxus ist\n\nViele Unternehmen betrachten Content-Strategie als **Nice-to-have**. Ein Fehler.\n\n## Die drei Säulen\n\n1. **Zielgruppenanalyse** — Wer liest das eigentlich?\n2. **Redaktionsplanung** — Wann erscheint was?\n3. **Erfolgsmessung** — Was bringt es wirklich?\n\n> Content ohne Strategie ist wie Segeln ohne Kompass.\n\nMehr dazu auf [wortfreunde.ch](https://wortfreunde.ch).",
+      "teaser": "Warum jedes Unternehmen eine Content-Strategie braucht",
+      "slug": "warum-content-strategie-kein-luxus-ist",
+      "publication_status": "published",
+      "published_at": "2026-03-19T18:00:00Z",
+      "created_at": "2026-03-19T10:00:00Z",
+      "updated_at": "2026-03-19T18:00:00Z",
+      "meta_title": null,
+      "meta_description": null,
+      "tags": [
+        { "id": 514, "name": "Strategie" },
+        { "id": 425, "name": "Content" }
+      ],
+      "media": [],
+      "channel": {
+        "id": 161,
+        "title": "Blog",
+        "platform": "git"
+      }
+    }
+  }
+}
