@@ -31,6 +31,11 @@
                     <input type="text" class="form-control" id="secret" name="settings[secret]" value="{settings.secret}" placeholder="Leave empty to disable signature verification" />
                     <div class="form-text">Shared secret for verifying incoming webhook signatures from wortfreunde.ch</div>
                 </div>
+                <div class="mb-3">
+                    <label for="allowedChannelIds" class="form-label">Allowed Channel IDs</label>
+                    <input type="text" class="form-control" id="allowedChannelIds" name="settings[allowedChannelIds]" value="{settings.allowedChannelIds}" placeholder="e.g. 161,162" />
+                    <div class="form-text">Comma-separated channel IDs to process. Leave empty to accept all channels.</div>
+                </div>
             </div>
         </div>
 

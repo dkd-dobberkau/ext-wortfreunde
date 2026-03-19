@@ -85,6 +85,7 @@ class WebhookLogController
             'defaultColPos' => (int)($input['defaultColPos'] ?? 0),
             'defaultContentType' => (string)($input['defaultContentType'] ?? 'text'),
             'enableLogging' => (bool)($input['enableLogging'] ?? false),
+            'allowedChannelIds' => (string)($input['allowedChannelIds'] ?? ''),
         ];
 
         $this->registry->set('wortfreunde_connector', 'settings', $settings);
@@ -114,6 +115,7 @@ class WebhookLogController
             'defaultColPos' => (int)($config['webhook.']['defaultColPos'] ?? $config['webhook']['defaultColPos'] ?? 0),
             'defaultContentType' => $config['webhook.']['defaultContentType'] ?? $config['webhook']['defaultContentType'] ?? 'text',
             'enableLogging' => (bool)($config['webhook.']['enableLogging'] ?? $config['webhook']['enableLogging'] ?? true),
+            'allowedChannelIds' => '',
         ];
     }
 }

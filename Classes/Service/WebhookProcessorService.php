@@ -86,6 +86,20 @@ class WebhookProcessorService implements LoggerAwareInterface
             throw new \InvalidArgumentException('Missing "data.post" in webhook payload.');
         }
 
+        // Filter by allowed channel IDs
+        $allowedChannelIds = $config['allowedChannelIds'] ?? '';
+        if ($allowedChannelIds !== '') {
+            $allowed = array_map('intval', array_filter(explode(',', $allowedChannelIds)));
+            $channelId = (int)($post['channel']['id'] ?? 0);
+            if (!in_array($channelId, $allowed, true)) {
+                return [
+                    'action' => 'skipped',
+                    'message' => 'Channel ' . $channelId . ' not in allowed list.',
+                    'post_id' => $post['id'] ?? null,
+                ];
+            }
+        }
+
         $postId = (string)($post['id'] ?? '');
         $webhookId = !empty($postId) ? $postId : ($deliveryId ?: uniqid('wf_', true));
 
