@@ -141,6 +141,11 @@ class WebhookMiddleware implements MiddlewareInterface, LoggerAwareInterface
             return false;
         }
 
+        // Strip "sha256=" prefix if present
+        if (str_starts_with($signature, 'sha256=')) {
+            $signature = substr($signature, 7);
+        }
+
         // Wortfreunde signs "{timestamp}.{body}"
         $signedPayload = $timestamp . '.' . $body;
         $expected = hash_hmac('sha256', $signedPayload, $secret);
