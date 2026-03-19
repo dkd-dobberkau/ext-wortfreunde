@@ -10,6 +10,7 @@ use TYPO3\CMS\Backend\Routing\UriBuilder;
 use TYPO3\CMS\Backend\Template\ModuleTemplateFactory;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Registry;
 
 /**
  * Backend module controller for viewing webhook logs and managing settings.
@@ -21,6 +22,7 @@ class WebhookLogController
         private readonly ConnectionPool $connectionPool,
         private readonly ExtensionConfiguration $extensionConfiguration,
         private readonly UriBuilder $uriBuilder,
+        private readonly Registry $registry,
     ) {}
 
     public function listAction(ServerRequestInterface $request): ResponseInterface
@@ -58,20 +60,7 @@ class WebhookLogController
     {
         $moduleTemplate = $this->moduleTemplateFactory->create($request);
 
-        try {
-            $config = $this->extensionConfiguration->get('wortfreunde_connector');
-        } catch (\Throwable) {
-            $config = [];
-        }
-
-        $settings = [
-            'secret' => $config['webhook.']['secret'] ?? $config['webhook']['secret'] ?? '',
-            'defaultPageUid' => (int)($config['webhook.']['defaultPageUid'] ?? $config['webhook']['defaultPageUid'] ?? 0),
-            'defaultLanguageUid' => (int)($config['webhook.']['defaultLanguageUid'] ?? $config['webhook']['defaultLanguageUid'] ?? 0),
-            'defaultColPos' => (int)($config['webhook.']['defaultColPos'] ?? $config['webhook']['defaultColPos'] ?? 0),
-            'defaultContentType' => $config['webhook.']['defaultContentType'] ?? $config['webhook']['defaultContentType'] ?? 'text',
-            'enableLogging' => (bool)($config['webhook.']['enableLogging'] ?? $config['webhook']['enableLogging'] ?? true),
-        ];
+        $settings = $this->getSettings();
 
         $saved = (bool)($request->getQueryParams()['saved'] ?? false);
 
@@ -87,22 +76,44 @@ class WebhookLogController
     public function saveSettingsAction(ServerRequestInterface $request): ResponseInterface
     {
         $body = $request->getParsedBody();
-        $settings = $body['settings'] ?? [];
+        $input = $body['settings'] ?? [];
 
-        $config = [
-            'webhook.' => [
-                'secret' => (string)($settings['secret'] ?? ''),
-                'defaultPageUid' => (int)($settings['defaultPageUid'] ?? 0),
-                'defaultLanguageUid' => (int)($settings['defaultLanguageUid'] ?? 0),
-                'defaultColPos' => (int)($settings['defaultColPos'] ?? 0),
-                'defaultContentType' => (string)($settings['defaultContentType'] ?? 'text'),
-                'enableLogging' => (bool)($settings['enableLogging'] ?? false),
-            ],
+        $settings = [
+            'secret' => (string)($input['secret'] ?? ''),
+            'defaultPageUid' => (int)($input['defaultPageUid'] ?? 0),
+            'defaultLanguageUid' => (int)($input['defaultLanguageUid'] ?? 0),
+            'defaultColPos' => (int)($input['defaultColPos'] ?? 0),
+            'defaultContentType' => (string)($input['defaultContentType'] ?? 'text'),
+            'enableLogging' => (bool)($input['enableLogging'] ?? false),
         ];
 
-        $this->extensionConfiguration->set('wortfreunde_connector', $config);
+        $this->registry->set('wortfreunde_connector', 'settings', $settings);
 
         $uri = $this->uriBuilder->buildUriFromRoute('wortfreunde.settings', ['saved' => 1]);
         return new \TYPO3\CMS\Core\Http\RedirectResponse($uri);
+    }
+
+    private function getSettings(): array
+    {
+        // Read from Registry (DB) first, fall back to ExtensionConfiguration
+        $stored = $this->registry->get('wortfreunde_connector', 'settings', []);
+        if (!empty($stored)) {
+            return $stored;
+        }
+
+        try {
+            $config = $this->extensionConfiguration->get('wortfreunde_connector');
+        } catch (\Throwable) {
+            $config = [];
+        }
+
+        return [
+            'secret' => $config['webhook.']['secret'] ?? $config['webhook']['secret'] ?? '',
+            'defaultPageUid' => (int)($config['webhook.']['defaultPageUid'] ?? $config['webhook']['defaultPageUid'] ?? 0),
+            'defaultLanguageUid' => (int)($config['webhook.']['defaultLanguageUid'] ?? $config['webhook']['defaultLanguageUid'] ?? 0),
+            'defaultColPos' => (int)($config['webhook.']['defaultColPos'] ?? $config['webhook']['defaultColPos'] ?? 0),
+            'defaultContentType' => $config['webhook.']['defaultContentType'] ?? $config['webhook']['defaultContentType'] ?? 'text',
+            'enableLogging' => (bool)($config['webhook.']['enableLogging'] ?? $config['webhook']['enableLogging'] ?? true),
+        ];
     }
 }

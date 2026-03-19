@@ -14,6 +14,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
+use TYPO3\CMS\Core\Registry;
 
 /**
  * PSR-15 Middleware that intercepts incoming webhook requests from wortfreunde.ch
@@ -33,6 +34,7 @@ class WebhookMiddleware implements MiddlewareInterface, LoggerAwareInterface
         private readonly ResponseFactoryInterface $responseFactory,
         private readonly StreamFactoryInterface $streamFactory,
         private readonly ExtensionConfiguration $extensionConfiguration,
+        private readonly Registry $registry,
     ) {}
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -114,13 +116,18 @@ class WebhookMiddleware implements MiddlewareInterface, LoggerAwareInterface
      */
     private function verifySignature(ServerRequestInterface $request, string $body): bool
     {
-        try {
-            $config = $this->extensionConfiguration->get('wortfreunde_connector');
-        } catch (\Throwable) {
-            $config = [];
-        }
+        // Read from Registry (DB) first, fall back to ExtensionConfiguration
+        $stored = $this->registry->get('wortfreunde_connector', 'settings', []);
+        $secret = $stored['secret'] ?? '';
 
-        $secret = $config['webhook']['secret'] ?? $config['webhook.']['secret'] ?? '';
+        if ($secret === '') {
+            try {
+                $config = $this->extensionConfiguration->get('wortfreunde_connector');
+            } catch (\Throwable) {
+                $config = [];
+            }
+            $secret = $config['webhook']['secret'] ?? $config['webhook.']['secret'] ?? '';
+        }
 
         if (empty($secret)) {
             $this->logger?->notice('Wortfreunde webhook: No secret configured, skipping signature verification.');
